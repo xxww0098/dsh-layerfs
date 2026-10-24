@@ -42,12 +42,16 @@ export function InitDialog({ folder, directories, onDone, onClose }: {
 
   const open = async (path?: string) => {
     setError(null)
+    const desktop = (globalThis as typeof globalThis & { __DSH_DIRECTORY_PICKER__?: { pick(): Promise<string | null> } }).__DSH_DIRECTORY_PICKER__
     try {
-      setBrowsing(await directories!.listDirectory(path))
+      if (desktop) {
+        const picked = await desktop.pick()
+        if (picked) setSource(picked)
+      } else setBrowsing(await directories!.listDirectory(path))
     } catch (e) {
       // dsh composes one picker: without the browse one, its native dialog picks
       const code = (e as { rpcError?: { code?: string } }).rpcError?.code ?? (e as Error).message
-      if (browsing || !/unavailable/.test(code) || !directories!.pickDirectory) { setError((e as Error).message); return }
+      if (desktop || browsing || !/unavailable/.test(code) || !directories!.pickDirectory) { setError((e as Error).message); return }
       try { const picked = await directories!.pickDirectory(); if (picked) setSource(picked) } catch (err) { setError((err as Error).message) }
     }
   }

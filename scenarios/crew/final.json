@@ -115,7 +115,7 @@
   "/packages/server/src/modules/work/attachment-storage.js": "57a6a98d4db9bdf51aee53a58e3acae0248bb1ee614615ae21812425eb813944",
   "/packages/server/src/modules/work/attachments.js": "146b064b52b6795f5914c88d4849b2e8993f5557c326a42558806c071b1972d9",
   "/packages/server/src/modules/work/boards.js": "3024f15fbc5c5c5f28164621143a423f697605cfdc67bcccfe5e9bf29d29a50f",
-  "/packages/server/src/modules/work/comments.js": "9e6ead7bd122e3f65ac8bc9a011fc288505582144a3200add02b93f106a3f7f8",
+  "/packages/server/src/modules/work/comments.js": "8483bb22cf58e06ea1d4c6ab1806d48c2f82fd7a4e7b583414b037bc89cdb9e0",
   "/packages/server/src/modules/work/issue-options.js": "3d5f0be5e26726ed6e989a081910480dc0f7293a4d3d3e0b8c6a01ac2f1be132",
   "/packages/server/src/modules/work/issue-routes.js": "2e0736b08609ba049e832c0d0f335f541fe7b28303dc71fed649df835176869a",
   "/packages/server/src/modules/work/issues.js": "44903a7fdbc2ad1373e8a38f0445471ce81679d8f14b43ae88211e70a008ce13",

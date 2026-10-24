@@ -108,3 +108,11 @@ Verification commands kept (install, a Branch's last build or test, or the lates
 - lead-533 A03 prepare tests: frozen acceptance command (acceptance.3; prepare; 6.6 s)
 - lead-537 A04 shared tests: frozen acceptance command (acceptance.3; test; 0.4 s)
 
+Replay correctness correction:
+
+- Every recorded comments.js lists equal-timestamp comments by SQLite insertion order (`rowid`), preserving creation order when random UUIDs sort in reverse. Original discussion tests and all replay steps remain unchanged.
+
+final.json:
+
+- main /packages/server/src/modules/work/comments.js: 9e6ead7bd122e3f65ac8bc9a011fc288505582144a3200add02b93f106a3f7f8 -> 8483bb22cf58e06ea1d4c6ab1806d48c2f82fd7a4e7b583414b037bc89cdb9e0
+

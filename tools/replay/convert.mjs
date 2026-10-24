@@ -483,11 +483,15 @@ function convert(name, repo, rev) {
 
   // ---------------------------------------------------------------- seed and changes
   const additions = SEED_ADDITIONS[name] ?? {};
+  const commentsPath = "/packages/server/src/modules/work/comments.js";
   const changeFiles = new Map();
   const transform = (changes) => {
-    if (!additions["/.cargo/config.toml"]) return changes;
     return changes.filter((ch) => !(ch.op === "mkdir" && additions[ch.path])).map((ch) => {
-      if (ch.op !== "write" || ch.path !== "/.cargo/config.toml") return ch;
+      // Equal millisecond clocks must preserve creation order, not random UUID order.
+      if (name === "crew" && ch.op === "write" && ch.path === commentsPath) {
+        return { ...ch, content: ch.content.replace("ORDER BY created_at,id", "ORDER BY created_at,rowid") };
+      }
+      if (!additions["/.cargo/config.toml"] || ch.op !== "write" || ch.path !== "/.cargo/config.toml") return ch;
       if (/^\[build\]/m.test(ch.content) || !/^\[net\]\nretry = 0$/m.test(ch.content)) fail("the recorded .cargo/config.toml has a [build] table or no net.retry = 0");
       return { ...ch, content: `${CARGO_BUILD}${ch.content}` };
     });
@@ -705,7 +709,7 @@ function convert(name, repo, rev) {
 
   for (const [file, changes] of changeFiles) writeFileSync(join(folder, "changes", file), `${JSON.stringify(changes, null, 1)}\n`);
 
-  // final.json: main's hashes of the files the seed's additions change
+  // final.json: main's hashes of source files transformed for this replay
   let finalText = source.finalText;
   const finalChanged = [];
   if (additions["/.cargo/config.toml"]) {
@@ -716,6 +720,16 @@ function convert(name, repo, rev) {
     const now = sha(`${CARGO_BUILD}${last.content}`);
     finalChanged.push(`main /.cargo/config.toml: ${final.main["/.cargo/config.toml"]} -> ${now}`);
     final.main["/.cargo/config.toml"] = now;
+    const indent = /^\{\n( +)"/.exec(source.finalText)?.[1].length ?? 1;
+    finalText = `${JSON.stringify(final, null, indent)}${source.finalText.endsWith("\n") ? "\n" : ""}`;
+  }
+  if (name === "crew") {
+    const sha = (text) => createHash("sha256").update(text).digest("hex");
+    const last = all.filter((c) => c.op === "write").flatMap((c) => c.changes).filter((ch) => ch.op === "write" && ch.path === commentsPath).at(-1);
+    if (!last || final.main[commentsPath] !== sha(last.content)) fail("main's recorded comments.js is not the last one written");
+    const now = sha(transform([last])[0].content);
+    finalChanged.push(`main ${commentsPath}: ${final.main[commentsPath]} -> ${now}`);
+    final.main[commentsPath] = now;
     const indent = /^\{\n( +)"/.exec(source.finalText)?.[1].length ?? 1;
     finalText = `${JSON.stringify(final, null, indent)}${source.finalText.endsWith("\n") ? "\n" : ""}`;
   }
@@ -790,6 +804,9 @@ function convert(name, repo, rev) {
     lines.push("Verification commands kept (install, a Branch's last build or test, or the latest build or prepare before that test):", "");
     for (const c of keptExecs.filter((c) => c.verification)) lines.push(`- ${runs.get(c.number).step} (${c.branch}; ${[!c.browser && INSTALL.test(c.command) && "install", BUILD.test(c.command) && "build", PREPARE.test(c.command) && "prepare", TEST.test(c.command) && "test"].filter(Boolean).join(", ")}; ${(c.ms / 1000).toFixed(1)} s)`);
     lines.push("");
+  }
+  if (name === "crew") {
+    lines.push("Replay correctness correction:", "", "- Every recorded comments.js lists equal-timestamp comments by SQLite insertion order (`rowid`), preserving creation order when random UUIDs sort in reverse. Original discussion tests and all replay steps remain unchanged.", "", "final.json:", "", ...finalChanged.map((l) => `- ${l}`), "");
   }
   if (Object.keys(additions).length) {
     lines.push("Seed additions (tools/replay/check.mjs accepts exactly these):", "");

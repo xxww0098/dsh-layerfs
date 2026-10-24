@@ -73,7 +73,7 @@ It follows the six steps below and asks before anything it cannot do. Expect a f
 <details>
 <summary><b>Install step by step: six steps, without an agent</b></summary>
 
-These steps take a fresh clone of this repository to LayerFS × DSH in dsh web: first LayerFS itself, then the dsh bundle. Only dsh web is supported. dsh desktop serves the same web client but was not tested. The headless profile composes no preset registry, so it offers no preset; the Host and the bash environment still load there.
+These steps take a fresh clone of this repository to LayerFS × DSH in dsh web: first LayerFS itself, then the dsh bundle. For the macOS desktop app, use the Desktop section below after building. The headless profile composes no preset registry, so it offers no preset; the Host and the bash environment still load there.
 
 ### You need
 
@@ -311,8 +311,9 @@ failure is reported explicitly and never replays a call. An uncertain Init reply
 also retains the macOS home and volume, recorded in `init-failures.jsonl` under
 `stateDir`, so protocol errors cannot trigger deletion of a completed Init.
 
-This setup uses the repository pnpm workspace and a dsh source checkout. Packaged
-dsh desktop and npm/plugin-market installation are not qualified
+This setup uses the repository pnpm workspace and a dsh source checkout.
+The macOS Desktop local-link setup and development checks are described
+[below](#desktop-on-macos). npm/plugin-market installation remains unqualified
 ([#406](https://github.com/Ephemeral-AI-Lab/layerfs/issues/406)). Docker Desktop
 volume visibility from a WSL Linux host is a separate unsupported topology;
 see [#380](https://github.com/Ephemeral-AI-Lab/layerfs/issues/380).
@@ -359,6 +360,64 @@ node tools/check-session.mjs 'http://127.0.0.1:3090/?token=…' <session id>
 `pnpm test` runs the Host, scripted model, model and playback tests, with LayerFS stubbed; it starts no Docker container or daemon. `check-session.mjs` checks that a finished session's tabs draw what LayerFS reports. The page's URL does not carry the session id: a session is the folder `$DSH_HOME/sessions/<workspace>/session-<uuid>`, whose name is the id.
 
 </details>
+
+## Desktop on macOS
+
+Build LayerFS and the client as above, using a dsh source checkout matching the
+installed app. Desktop supplies its own Host runtime. Finish active runs and
+quit the app, then back up `package.json`, `cordis.patch.yml` and `pnpm-lock.yaml`
+under `~/.dsh/profiles/desktop/`. Install into that profile, keeping existing
+bundles and configuration:
+
+```sh
+DSH_CLI='/Applications/DeepSeek Harness.app/Contents/Resources/runtime/cli/bin/dsh'
+"$DSH_CLI" plugin --profile desktop add \
+  "link:$DSH_LAYERFS/packages/dsh-layerfs" \
+  "link:$DSH_LAYERFS/packages/host" \
+  "link:$DSH_LAYERFS/packages/mock"
+```
+
+The current `layerfs.json` pin is `823c4fe3ed66a5655a4d65a0afe6217e716fceea`,
+which includes the macOS worker-socket correction. Check out that exact LayerFS
+commit before running `pnpm run check:layerfs` or building the Linux bundle.
+The live runs recorded below used the same API/core production source contents at the
+v1.1.0 base plus the correction; their original source identities are retained.
+
+The Host links matter: Desktop resolves dsh peers for the profile's directly
+linked package roots. With only the bundle linked, the client can appear while
+Host components remain inactive and `/layerfs` returns 404.
+
+Add step 4's `layerfs-host` settings to the **desktop** profile's patch, with a
+separate `home` and `containerPrefix`. Set `docker` to Docker Desktop's actual
+Unix socket (`docker context inspect --format '{{.Endpoints.docker.Host}}'`,
+without `unix://`). If that differs from `/var/run/docker.sock`, use a LayerFS
+build with the worker-socket routing correction: the Mac CLI and Linux worker
+use different paths. Open the installed app normally; no separate dsh web
+server or web-profile installation is needed. Import uses the app's native
+folder picker, and Work, History and the LayerFS page use its authenticated Host.
+
+The scripted Tests use ordinary continuable subagents. Disable the experimental
+Agent Teams profile bundle before running them: it replaces `send_message`
+with an incompatible `target` schema, while these scenarios address children
+with `agent_id`. Back up the profile first and finish active runs before
+changing its bundle list. Removing that bundle from `dsh.profile.bundles`
+keeps its installed dependency and saved configuration available for restoration.
+
+Development verification on 2026-10-24–25 used dsh 0.2.1-rc.2 on macOS, this
+checkout's native-picker fix and the pinned LayerFS 1.1.0 source with the local
+worker-socket correction. Real Init, file writes/reads, Sandbox, mount, Exec,
+Commit, unmount, publish and desktop History passed. This is not a new release.
+Desktop's native folder import and all ten scripted scenarios passed
+on 2026-10-24–25: Tests displayed **10 passed, 0 failed, 0 running, 0 not run**.
+Depot completed all 98 steps (including replies) in 10:05 and Crew all 967 in
+6:34. The Crew converter corrects equal-timestamp comment ordering in its three
+recorded implementations; the original assertions and all scenario steps stay.
+A regression forces tied clocks and reversed IDs. Depot used a local
+runtime with Rust, browser tools and a Cargo mirror launcher, including its
+Clippy forwarding. Per-case images, passing runs and retained failures are in
+`~/.dsh/backups/layerfs-desktop-20261024/scenarios/verification.json`.
+Linux and Windows Desktop remain untested; npm/marketplace installation remains
+unqualified. These changes and the runtime image are local development inputs.
 
 ## 🏁 Two real runs
 
@@ -576,7 +635,7 @@ Run the preset's sessions in Workspace Write mode; subagents inherit it.
 
 ## ⚠️ Limits
 
-- Only dsh web is checked. dsh desktop serves the same web client but was not tested; the headless profile has no preset registry, so the preset is not offered there.
+- macOS Desktop has a development smoke check as described above; the full scripted suite was checked in dsh web. Linux and Windows Desktop remain untested. The headless profile has no preset registry, so the preset is not offered there.
 - A session's project is fixed at its first bash call that uses it.
 - Sessions run in Workspace Write mode. Windows defaults agent traces to
   `<workspace>/.dsh-layerfs-traces`, because its restricted shell can write
